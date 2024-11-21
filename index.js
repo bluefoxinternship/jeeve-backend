@@ -2,23 +2,23 @@ import 'dotenv/config';
 import express from 'express';
 import connectDB from './config/database.js'; 
 import ProductRoute from './routes/ProductRoute.js';
+import AuthRoute from './routes/AuthRoutes.js';
 
 const app = express();
-
-
-
 connectDB();
 
 // Middleware
 app.use(express.json());
 
-
+// Default route
 app.get('/', (req, res) => {
-    res.send('Hello!');
+    res.json({ message: 'Hello!' }); // Corrected syntax for the JSON response
 });
-app.use(ProductRoute)
 
-const PORT = 3000;
+// Routes
+app.use([ProductRoute, AuthRoute]);
+
+const PORT = 8000;
 app.listen(PORT, () => {
     console.log(`Server is running on http://localhost:${PORT}`);
 });
