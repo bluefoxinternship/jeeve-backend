@@ -6,6 +6,7 @@ import AuthRoute from './routes/AuthRoutes.js';
 
 const app = express();
 connectDB();
+const apiRoute = "/api";
 
 // Middleware
 app.use(express.json());
@@ -16,7 +17,7 @@ app.get('/', (req, res) => {
 });
 
 // Routes
-app.use([ProductRoute, AuthRoute]);
+app.use(`${apiRoute}/v1`, [ProductRoute, AuthRoute]);
 
 const PORT = 8000;
 app.listen(PORT, () => {
