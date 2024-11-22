@@ -29,10 +29,9 @@ const user = (req, res, next) => {
         success: false,
       });
     } else {
-
       req.user_id = decoded.id;
-      req.email = decoded.email
-      req.name = decoded.name
+      // req.email = decoded.email
+      // req.name = decoded.name
       next();
     }
   });

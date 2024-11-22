@@ -1,6 +1,6 @@
-const { body } = require('express-validator');
+import { body } from 'express-validator';
 
-const registerValidation = [
+export const registerValidation = [
   body('mobile', 'Mobile number is required').notEmpty(),
   body('mobile', 'Invalid mobile number').isMobilePhone(),
   body('date_of_birth', 'Date of birth is required').notEmpty(),
@@ -10,12 +10,7 @@ const registerValidation = [
   body('confirm_password', 'Passwords must match').custom((value, { req }) => value === req.body.password),
 ];
 
-const loginValidation = [
+export const loginValidation = [
   body('mobile', 'Mobile number is required').notEmpty(),
   body('password', 'Password is required').notEmpty(),
 ];
-
-module.exports = {
-  registerValidation,
-  loginValidation,
-};

@@ -1,10 +1,10 @@
 import { Router } from 'express';
-import AuthController from '../controllers/AuthController.js'; // Use import for controllers
-import { registerValidation, loginValidation } from '../validation/UserValidation.js'; // Use import for validation functions
-import validateRequest from '../middlewares/ValidateRquest.js'; // Use import for middleware
+import { register, login } from '../controllers/AuthController.js'; 
+import { registerValidation, loginValidation } from '../validation/UserValidation.js'; 
+import validateRequest from '../middlewares/ValidateRequest.js'; 
 
 const router = Router();
-router.post('/register', registerValidation, validateRequest, AuthController.register);
-router.post('/login', loginValidation, validateRequest, AuthController.login);
+router.post('/api/v1/register', registerValidation, validateRequest, register); 
+router.post('/api/v1/login', loginValidation, validateRequest, login); 
 
 export default router;
