@@ -8,9 +8,6 @@ export const cashOnDelivery = async (req, res) => {
     try {
         const { orderId, amount } = req.body;
 
-        // Save COD details in your database (if necessary)
-        // Example:
-        // await Order.create({ orderId, amount, paymentType: "COD", status: "Pending" });
 
         return res.status(200).json({
             success: true,
