@@ -9,8 +9,8 @@ import Order from '../models/orderModel.js';
 export const cashOnDelivery = async (req, res) => {
     try {
         const { orderId } = req.body;
-        const order = await Order.findById(orderId);
         
+        const order = await Order.findById(orderId);
         if (!order) {
             return res.status(404).json({
                 success: false,
@@ -18,18 +18,18 @@ export const cashOnDelivery = async (req, res) => {
             });
         }
 
-        // Validate amount limits
+        // Validate COD conditions
         if (order.totalAmount < codPaymentConfig.minimumAmount || 
             order.totalAmount > codPaymentConfig.maximumAmount) {
             return res.status(400).json({
                 success: false,
-                message: `COD amount must be between ${codPaymentConfig.minimumAmount} and ${codPaymentConfig.maximumAmount}`
+                message: `COD is only available for orders between ${codPaymentConfig.minimumAmount} and ${codPaymentConfig.maximumAmount}`
             });
         }
 
-        // Update order status
-        order.paymentStatus = PAYMENT_STATUS.PENDING;
+        // Update order with COD details
         order.paymentMethod = 'COD';
+        order.paymentStatus = PAYMENT_STATUS.PENDING;
         order.orderStatus = 'Confirmed';
         await order.save();
 
@@ -166,7 +166,7 @@ export const stripePayment = async (req, res) => {
             return_url: stripePaymentConfig.successUrl,
             metadata: {
                 orderId: order._id.toString(),
-                customerEmail: order.contactInfo.email
+                customerEmail: order.contactInfo?.email
             }
         });
 
