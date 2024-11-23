@@ -26,10 +26,7 @@ const stripePaymentConfig = {
 
 const codPaymentConfig = {
     method: 'Cash on Delivery',
-    allowedStatuses: ['pending', 'confirmed'],
-    minimumAmount: 100,
-    maximumAmount: 100000,
-    allowedLocations: ['Nepal']
+    allowedStatuses: ['pending', 'confirmed']
 };
 
 const PAYMENT_METHODS = {

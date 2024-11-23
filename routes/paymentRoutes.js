@@ -26,7 +26,7 @@ const paymentValidation = {
     ]
 };
 
-// Protected payment routes - adding authentication middleware
+// added authentication
 router.post("/payment/cod", user, validateRequest(paymentValidation.cod), cashOnDelivery);
 router.post("/payment/esewa", user, validateRequest(paymentValidation.esewa), esewaPayment);
 router.post("/payment/stripe", user, validateRequest(paymentValidation.stripe), stripePayment);
