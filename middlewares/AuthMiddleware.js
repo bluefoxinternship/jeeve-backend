@@ -1,5 +1,6 @@
-const jwt = require("jsonwebtoken");
-require("dotenv").config();
+import jwt from 'jsonwebtoken';
+import dotenv from 'dotenv';
+dotenv.config();
 
 function getToken(req) {
   if (
@@ -11,7 +12,7 @@ function getToken(req) {
   return null;
 }
 
-const user = (req, res, next) => {
+export const user = (req, res, next) => {
   const token = getToken(req);
 
   if (!token) {
@@ -36,5 +37,3 @@ const user = (req, res, next) => {
     }
   });
 };
-
-module.exports = { user }

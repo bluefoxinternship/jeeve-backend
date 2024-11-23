@@ -1,29 +1,56 @@
 import Stripe from 'stripe';
+import dotenv from 'dotenv';
 
-// Dummy Eswa Merchant Code and Test Stripe Secret Key
-const ESEWA_MERCHANT_CODE = 'PAYTEST'; 
-const STRIPE_SECRET_KEY = 'sk_test_51J0mKlF9gDkZ2t3hHOb2tbf7c2v5l26DBVmGnnFsq0Mt6DJ2S72FGxy5FscEkq7aXzN9R6AwEDjfK0N4tj5BrpaP'; // Stripe test key
+dotenv.config();
 
-// Initialize Stripe with your secret key
-const stripe = Stripe(STRIPE_SECRET_KEY);
+// Initialize Stripe
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+    apiVersion: '2023-10-16'
+});
 
-// Eswa Payment Configuration
 const esewaPaymentConfig = {
-  apiUrl: 'https://esewa.com.np',
-  merchantCode: ESEWA_MERCHANT_CODE,
+    apiUrl: process.env.NODE_ENV === 'production' 
+        ? 'https://esewa.com.np' 
+        : 'https://uat.esewa.com.np',
+    merchantCode: process.env.ESEWA_MERCHANT_CODE,
+    successUrl: `${process.env.BASE_URL}/api/payment/esewa/success`,
+    failureUrl: `${process.env.BASE_URL}/api/payment/esewa/failure`,
 };
 
-// Stripe Payment Configuration
 const stripePaymentConfig = {
-  stripeClient: stripe,
-  currency: 'USD', 
-  paymentIntentEndpoint: '/create-payment-intent', 
+    stripeClient: stripe,
+    currency: 'USD',
+    successUrl: `${process.env.BASE_URL}/payment/success`,
+    cancelUrl: `${process.env.BASE_URL}/payment/cancel`,
 };
 
-// Cash on Delivery (COD) Configuration
 const codPaymentConfig = {
-  method: 'Cash on Delivery',
-  description: 'Pay cash on delivery of your order',
+    method: 'Cash on Delivery',
+    allowedStatuses: ['pending', 'confirmed'],
+    minimumAmount: 100,
+    maximumAmount: 100000,
+    allowedLocations: ['Nepal']
 };
 
-export { esewaPaymentConfig, stripePaymentConfig, codPaymentConfig };
+const PAYMENT_METHODS = {
+    COD: 'COD',
+    ESEWA: 'ESEWA',
+    STRIPE: 'STRIPE'
+};
+
+const PAYMENT_STATUS = {
+    PENDING: 'pending',
+    PROCESSING: 'processing',
+    COMPLETED: 'completed',
+    FAILED: 'failed',
+    REFUNDED: 'refunded',
+    CANCELLED: 'cancelled'
+};
+
+export { 
+    esewaPaymentConfig, 
+    stripePaymentConfig, 
+    codPaymentConfig,
+    PAYMENT_METHODS,
+    PAYMENT_STATUS
+};
