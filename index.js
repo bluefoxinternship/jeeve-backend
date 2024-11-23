@@ -20,7 +20,8 @@ app.get('/', (req, res) => {
 
 
 // Routes
-app.use(`${apiRoute}/v1`, [ProductRoute, AuthRoute, categoryRouter]);
+app.use(`${apiRoute}/v1`, [ProductRoute, AuthRoute]);
+app.use(${apiRoute}/v1, categoryRouter);
 
 const PORT = 8000;
 app.listen(PORT, () => {
