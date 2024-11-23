@@ -2,7 +2,7 @@ import 'dotenv/config';
 import express from 'express';
 import connectDB from './config/database.js'; 
 import ProductRoute from './routes/ProductRoute.js';
-import categoryRouter from './routes/Categories.js ';
+import categoryRouter from './routes/Categories.js';
 
 import AuthRoute from './routes/AuthRoutes.js';
 
