@@ -17,12 +17,10 @@ app.use(express.json());
 app.get('/', (req, res) => {
     res.json({ message: 'Hello!' }); // Corrected syntax for the JSON response
 });
-app.use(ProductRoute)
-app.use(categoryRouter)
 
 
 // Routes
-app.use(`${apiRoute}/v1`, [ProductRoute, AuthRoute]);
+app.use(`${apiRoute}/v1`, [ProductRoute, AuthRoute, categoryRouter]);
 
 const PORT = 8000;
 app.listen(PORT, () => {
