@@ -1,5 +1,5 @@
 import cloudinary from "../config/cloudinaryConfig.js";
-import upload from "../middlewares/multer.js";
+
 import categoryModel from "../models/Categories.js";
 import Product from "../models/Product.js";
 

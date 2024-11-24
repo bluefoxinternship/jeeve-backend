@@ -16,10 +16,10 @@ const validateCategory = [
     .notEmpty().withMessage('Category description is required')
     .isLength({ min: 10, max: 500 }).withMessage('Description must be between 10 and 500 characters'),
   
-  body('cStatus')
-    .trim()
-    .notEmpty().withMessage('Status is required')
-    .isIn(['active', 'inactive']).withMessage('Status must be either active or inactive'),
+  // body('cStatus')
+  //   .trim()
+  //   .notEmpty().withMessage('Status is required')
+  //   .isIn(['active', 'inactive']).withMessage('Status must be either active or inactive'),
   
   body('parentCategory')
     .optional({ nullable: true })
