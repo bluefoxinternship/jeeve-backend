@@ -1,10 +1,12 @@
 import cloudinary from "../config/cloudinaryConfig.js";
+import upload from "../middlewares/multer.js";
+import categoryModel from "../models/Categories.js";
 import Product from "../models/Product.js";
 
 
 export const getAllProducts = async (req, res) => {
   try {
-    const products = await Product.find({});
+    const products = await Product.find({}).populate("category", "cName cDescription").sort({createdAt:-1})
     
     if (!products.length) {
       return res.status(404).json({
@@ -39,7 +41,7 @@ export const getProductById = async (req, res) => {
       });
     }
 
-    const product = await Product.findById(id);
+    const product = await Product.findById(id).populate("category", "cName cDescription");
 
     if (!product) {
       return res.status(404).json({
@@ -62,35 +64,78 @@ export const getProductById = async (req, res) => {
   }
 };
 
-export const createProduct = async (req, res, next) => {
-  const {
-    productName,
-    productDetail,
-    productPrice,
-    brand,
-    countInStock,
-    productImage,
-  } = req.body;
-
+export const createProduct = async (req, res) => {
   try {
-    const newProduct = new Product({
+    const {
       productName,
       productDetail,
       productPrice,
       brand,
       countInStock,
-      productImage,
+      category,
+    } = req.body;
+
+// Convert price to number if it's coming as string from form-data
+const price = Number(productPrice);
+const stock = Number(countInStock);
+
+    // Check if category exists
+    const categoryExist = await categoryModel.findById(category);
+    if (!categoryExist) {
+      return res.status(400).json({
+        status: "error",
+        message: "Category does not exist",
+      });
+    }
+
+    // Upload image to Cloudinary if file is present
+    let productImageUrl = null;
+    if (req.file) {
+      try {
+        const uploadResult = await new Promise((resolve, reject) => {
+          const uploadStream = cloudinary.uploader.upload_stream(
+            { 
+              folder: "product_images",
+              resource_type: "auto"
+            },
+            (error, result) => {
+              if (error) reject(error);
+              else resolve(result);
+            }
+          );
+          uploadStream.end(req.file.buffer);
+        });
+        productImageUrl = uploadResult.secure_url;
+      } catch (uploadError) {
+        console.error("Error uploading to Cloudinary:", uploadError);
+        return res.status(500).json({
+          status: "error",
+          message: "Error uploading image",
+        });
+      }
+    }
+
+    // Create the new product
+    const newProduct = new Product({
+      productName,
+      productDetail,
+      productPrice: price,
+      brand,
+      countInStock: stock,
+      productImage: productImageUrl,
+      category,
     });
 
     await newProduct.save();
 
-    return res.status(200).json({
+    return res.status(201).json({
       status: "success",
       message: "Product successfully created",
       product: newProduct,
     });
   } catch (err) {
-    return res.status(400).json({
+    console.error("Error creating product:", err);
+    return res.status(500).json({
       status: "error",
       message: err.message || "Error creating product",
     });
@@ -99,45 +144,98 @@ export const createProduct = async (req, res, next) => {
 
 
 export const editProduct = async (req, res) => {
-  const {
-    productName,
-    productDetail,
-    productPrice,
-    brand,
-    countInStock,
-    productImage,
-  } = req.body;
-
-  const productUpdates = {
-    productName,
-    productDetail,
-    productPrice,
-    brand,
-    countInStock,
-    productImage,
-  };
-  if (req.body.product_image) {
-    productUpdates.productImage = req.body.product_image;
-  }
   try {
-    const updatedProduct = await Product.findByIdAndUpdate(
-      req.params.id,
-      productUpdates,
-      { new: true }
-    );
-    if (!updatedProduct) {
+    const productId = req.params.id;
+    const existingProduct = await Product.findById(productId);
+    if (!existingProduct) {
       return res.status(404).json({
         status: "error",
         message: "Product not found",
       });
     }
+
+    const {
+      productName,
+      productDetail,
+      productPrice,
+      brand,
+      countInStock,
+      category,
+    } = req.body;
+
+    // Build update object with type conversion for numeric fields
+    let productUpdates = {
+      ...(productName && { productName }),
+      ...(productDetail && { productDetail }),
+      ...(productPrice && { productPrice: Number(productPrice) }),
+      ...(brand && { brand }),
+      ...(countInStock && { countInStock: Number(countInStock) }),
+    };
+
+    if (category) {
+      const categoryExists = await categoryModel.findById(category);
+      if (!categoryExists) {
+        return res.status(404).json({
+          status: "error",
+          message: "Category not found",
+        });
+      }
+      productUpdates.category = category;
+    }
+
+    if (req.file) {
+      try {
+        if (existingProduct.productImage) {
+          const publicId = existingProduct.productImage.split('/').slice(-1)[0].split('.')[0];
+          try {
+            await cloudinary.uploader.destroy(`product_images/${publicId}`);
+          } catch (deleteError) {
+            console.error("Error deleting old image:", deleteError);
+          }
+        }
+
+        // Upload new image
+        const uploadResult = await new Promise((resolve, reject) => {
+          const uploadStream = cloudinary.uploader.upload_stream(
+            { 
+              folder: "product_images",
+              resource_type: "auto" 
+            },
+            (error, result) => {
+              if (error) reject(error);
+              else resolve(result);
+            }
+          );
+          uploadStream.end(req.file.buffer);
+        });
+        productUpdates.productImage = uploadResult.secure_url;
+      } catch (uploadError) {
+        console.error("Error uploading to Cloudinary:", uploadError);
+        return res.status(500).json({
+          status: "error",
+          message: "Error uploading new image",
+        });
+      }
+    }
+
+    const updatedProduct = await Product.findByIdAndUpdate(
+      productId,
+      productUpdates,
+      { 
+        new: true,
+        runValidators: true 
+      }
+    ).populate("category", "cName cDescription");
+
     return res.status(200).json({
       status: "success",
-      message: "Product successfully updated",
+      message: "Product updated successfully",
       product: updatedProduct,
     });
+
   } catch (error) {
-    return res.status(400).json({
+    console.error("Error updating product:", error);
+    return res.status(500).json({
       status: "error",
       message: error.message || "Error updating product",
     });
