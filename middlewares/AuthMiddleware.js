@@ -15,24 +15,43 @@ export const user = (req, res, next) => {
   const token = getToken(req);
 
   if (!token) {
-    return res.status(403).json({
-      message: "Unauthorized Access! Please Login to continue",
+    return res.status(401).json({
       success: false,
+      message: "Unauthorized Access! Please login to continue.",
     });
   }
 
-  jwt.verify(token, process.env.SECRET_KEY ?? '', async function (err, decoded) {
+  const secretKey = process.env.JWT_SECRET;
+
+  if (!secretKey) {
+    console.error("JWT Secret Key is not defined in the environment variables.");
+    return res.status(500).json({
+      success: false,
+      message: "Internal Server Error. Please try again later.",
+    });
+  }
+
+  jwt.verify(token, secretKey, (err, decoded) => {
     if (err) {
-      console.log(err)
+      console.error("JWT Error:", err.message);
+      const message =
+        err.name === "TokenExpiredError"
+          ? "Session expired. Please login again."
+          : "Invalid token. Please login again.";
+
       return res.status(403).json({
-        message: "Invalid Token",
         success: false,
+        message,
       });
-    } else {
-      req.user_id = decoded.id;
-      // req.email = decoded.email
-      // req.name = decoded.name
-      next();
     }
+
+    // Attach user information to the request
+    req.user = {
+      id: decoded.id,
+      // email: decoded.email, // Add these if they exist in your token payload
+      // name: decoded.name,
+    };
+
+    next();
   });
 };
