@@ -3,124 +3,191 @@ import categoryModel from '../models/Categories.js';
 
 class Category {
   // Get all categories
-  async getAllCategory(req, res) {
+  async getAllCategory(req, res, next) {
     try {
-      let Categories = await categoryModel.find({}).sort({ _id: -1 });
-      if (Categories) {
-        return res.json({ Categories });
-      } else {
-        return res.json({ error: "No categories found" });
-      }
+      const categories = await categoryModel
+        .find({ parentCategory: null })
+        .sort({ _id: -1 });
+
+      return res.status(200).json({
+        success: true,
+        message: categories.length ? 'Categories retrieved successfully' : 'No categories found',
+        data: categories,
+        count: categories.length
+      });
     } catch (err) {
-      console.log(err);
-      return res.json({ error: "An error occurred while fetching categories" });
+      next(err);
     }
   }
 
   // Get subcategories of a specific category
-  async getSubcategories(req, res) {
-    const { parentCategoryId } = req.params; // Get the parent category ID from the route parameter
-
+  async getSubcategories(req, res, next) {
     try {
-      // Fetch subcategories for the parent category
-      const subcategories = await categoryModel.find({ parentCategory: parentCategoryId });
-
-      if (subcategories.length > 0) {
-        return res.json({ subcategories });
-      } else {
-        return res.json({ message: "No subcategories found for this category" });
-      }
-    } catch (err) {
-      console.log(err);
-      return res.json({ error: "An error occurred while fetching subcategories" });
-    }
-  }
-
-  // Add a new category (main or subcategory)
-  async postAddCategory(req, res) {
-    let { cName, cDescription, cStatus, parentCategory } = req.body; // Add parentCategory for subcategory
-
-    // Check if all required fields are present
-    if (!cName || !cDescription || !cStatus) {
-      return res.json({ error: "All fields must be required" });
-    }
-
-    cName = toTitleCase(cName); // Convert category name to title case
-
-    try {
-      // Check if the category already exists
-      let checkCategoryExists = await categoryModel.findOne({ cName: cName });
-      if (checkCategoryExists) {
-        return res.json({ error: "Category already exists" });
-      } else {
-        // Create and save the new category or subcategory
-        let newCategory = new categoryModel({
-          cName,
-          cDescription,
-          cStatus,
-          parentCategory: parentCategory || null, // Set parent category for subcategory or null for main category
+      const { parentCategoryId } = req.params;
+      
+      // First check if parent category exists
+      const parentCategory = await categoryModel.findById(parentCategoryId);
+      if (!parentCategory) {
+        return res.status(404).json({
+          success: false,
+          message: 'Parent category not found'
         });
-
-        // Save category (use async/await, no callback needed)
-        await newCategory.save();
-
-        return res.json({ success: "Category created successfully" });
       }
+
+      const subcategories = await categoryModel
+        .find({ parentCategory: parentCategoryId })
+        .sort({ _id: -1 });
+
+      return res.status(200).json({
+        success: true,
+        message: subcategories.length ? 'Subcategories retrieved successfully' : 'No subcategories found',
+        data: subcategories,
+        count: subcategories.length,
+        parentCategory: parentCategory.cName
+      });
     } catch (err) {
-      console.log(err);
-      return res.json({ error: "An error occurred while creating the category" });
+      next(err);
     }
   }
 
-  // Edit a category (main or subcategory)
-  async postEditCategory(req, res) {
-    let { cId, cDescription, cStatus, parentCategory } = req.body;
-
-    if (!cId || !cDescription || !cStatus) {
-      return res.json({ error: "All fields must be required" });
-    }
-
+  // Add a new category
+  async postAddCategory(req, res, next) {
     try {
-      let editCategory = await categoryModel.findByIdAndUpdate(cId, {
-        cDescription,
-        cStatus,
-        parentCategory, // Update the parent category if needed
-        updatedAt: Date.now(),
+      const { cName, cDescription, cStatus, parentCategory } = req.body;
+
+      // Check for existing category with same name
+      const existingCategory = await categoryModel.findOne({
+        cName: new RegExp(`^${cName}$`, 'i'),
+        parentCategory: parentCategory || null
       });
 
-      if (editCategory) {
-        return res.json({ success: "Category edited successfully" });
-      } else {
-        return res.json({ error: "Category not found" });
+      if (existingCategory) {
+        return res.status(409).json({
+          success: false,
+          message: 'Category already exists at this level'
+        });
       }
+
+      // If it's a subcategory, verify parent exists
+      if (parentCategory) {
+        const parentExists = await categoryModel.findById(parentCategory);
+        if (!parentExists) {
+          return res.status(404).json({
+            success: false,
+            message: 'Parent category not found'
+          });
+        }
+      }
+
+      const newCategory = new categoryModel({
+        cName: toTitleCase(cName),
+        cDescription,
+        cStatus,
+        parentCategory: parentCategory || null
+      });
+
+      await newCategory.save();
+
+      return res.status(201).json({
+        success: true,
+        message: 'Category created successfully',
+        data: newCategory
+      });
     } catch (err) {
-      console.log(err);
-      return res.json({ error: "An error occurred while editing the category" });
+      next(err);
     }
   }
 
-  // Delete a category (main or subcategory)
-  async getDeleteCategory(req, res) {
-    let { cId } = req.body;
-
-    if (!cId) {
-      return res.json({ error: "Category ID is required" });
-    }
-
+  // Edit a category
+  async putEditCategory(req, res, next) {
     try {
-      // Find the category to be deleted
-      let deletedCategory = await categoryModel.findById(cId);
+      const { cId, cName, cDescription, cStatus, parentCategory } = req.body;
 
-      if (deletedCategory) {
-        // Delete the category from the database
-        await categoryModel.findByIdAndDelete(cId);
-        return res.json({ success: "Category deleted successfully" });
-      } else {
-        return res.json({ error: "Category not found" });
+      // If name is being updated, check for duplicates
+      if (cName) {
+        const existingCategory = await categoryModel.findOne({
+          cName: new RegExp(`^${cName}$`, 'i'),
+          _id: { $ne: cId },
+          parentCategory: parentCategory || null
+        });
+
+        if (existingCategory) {
+          return res.status(409).json({
+            success: false,
+            message: 'Category name already exists at this level'
+          });
+        }
       }
+
+      // If changing parent category, verify it exists
+      if (parentCategory) {
+        const parentExists = await categoryModel.findById(parentCategory);
+        if (!parentExists) {
+          return res.status(404).json({
+            success: false,
+            message: 'Parent category not found'
+          });
+        }
+      }
+
+      const updatedCategory = await categoryModel.findByIdAndUpdate(
+        cId,
+        {
+          ...(cName && { cName: toTitleCase(cName) }),
+          ...(cDescription && { cDescription }),
+          ...(cStatus && { cStatus }),
+          ...(parentCategory !== undefined && { parentCategory: parentCategory || null }),
+          updatedAt: Date.now()
+        },
+        { new: true }
+      );
+
+      if (!updatedCategory) {
+        return res.status(404).json({
+          success: false,
+          message: 'Category not found'
+        });
+      }
+
+      return res.status(200).json({
+        success: true,
+        message: 'Category updated successfully',
+        data: updatedCategory
+      });
     } catch (err) {
-      console.log(err);
-      return res.json({ error: "An error occurred while deleting the category" });
+      next(err);
+    }
+  }
+
+  // Delete a category
+  async deleteCategory(req, res, next) {
+    try {
+      const { cId } = req.params;
+
+      // Check if category has subcategories
+      const hasSubcategories = await categoryModel.exists({ parentCategory: cId });
+      if (hasSubcategories) {
+        return res.status(409).json({
+          success: false,
+          message: 'Cannot delete category with existing subcategories. Please delete subcategories first.'
+        });
+      }
+
+      const deletedCategory = await categoryModel.findByIdAndDelete(cId);
+      if (!deletedCategory) {
+        return res.status(404).json({
+          success: false,
+          message: 'Category not found'
+        });
+      }
+
+      return res.status(200).json({
+        success: true,
+        message: 'Category deleted successfully',
+        data: deletedCategory
+      });
+    } catch (err) {
+      next(err);
     }
   }
 }
