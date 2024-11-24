@@ -36,4 +36,3 @@ export const user = (req, res, next) => {
     }
   });
 };
-
