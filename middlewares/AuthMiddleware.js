@@ -11,7 +11,7 @@ function getToken(req) {
   return null;
 }
 
-export const user = (req, res, next) => {
+export const isUser = (req, res, next) => {
   const token = getToken(req);
 
   if (!token) {
@@ -54,4 +54,14 @@ export const user = (req, res, next) => {
 
     next();
   });
+};
+
+export const isAdmin = (req, res, next) => {
+  if (!req.user || req.user.user_type !== "admin") {
+    return res.status(403).json({
+      success: false,
+      message: "Forbidden! You do not have the necessary permissions.",
+    });
+  }
+  next();
 };

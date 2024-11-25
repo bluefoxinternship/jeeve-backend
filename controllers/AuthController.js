@@ -16,9 +16,7 @@ export const register = async (req, res) => {
     return res.status(400).json({ errors: errors.array() });
   }
 
-  const { mobile, date_of_birth, password, confirm_password, user_type } = req.body;
-
-  const resolvedUserType = user_type || 'patient';
+  const { mobile, date_of_birth, password, confirm_password } = req.body;
 
   if (password !== confirm_password) {
     return res.status(400).json({ message: 'Passwords do not match' });
@@ -36,10 +34,10 @@ export const register = async (req, res) => {
       mobile,
       date_of_birth,
       password,
-      user_type: resolvedUserType,
     });
 
-    res.status(201).json({ message: 'User registered successfully', user });
+    const token = generateToken(user._id);
+    res.status(201).json({ message: 'User registered successfully', token, user });
   } catch (error) {
     console.error('Register Error:', error);
     res.status(500).json({ message: 'Server Error', error: error.message });

@@ -4,6 +4,7 @@ import {
   deleteProduct,
   editProduct,
   getAllProducts,
+  getProductById,
 } from "../controllers/ProductController.js";
 import upload from "../middlewares/multer.js";
 import cloudinary from "../config/cloudinaryConfig.js";
@@ -12,14 +13,18 @@ import {
   productValidationRules,
 } from "../validation/ProductValidation.js";
 import validateRequest from "../middlewares/ValidateRequest.js";
+import { isAdmin } from "../middlewares/AuthMiddleware.js";
 
 const router = Router();
 
 router.get("/all_products", getAllProducts)
 
+router.get("/product_by_id/:id", getProductById)
+
 // Product creation route
 router.post(
   "/create_product",
+  isAdmin,
   upload.single("productImage"),
   productValidationRules,
   validateRequest,
@@ -29,6 +34,7 @@ router.post(
 //edit product
 router.put(
   "/update_product/:id",
+  isAdmin,
   upload.single("productImage"),
   [...productValidationRules, ...productIdValidation],
   validateRequest,
@@ -38,6 +44,7 @@ router.put(
 //delete product
 router.delete(
   "/delete_product/:id",
+  isAdmin,
   productIdValidation,
   validateRequest,
   deleteProduct
