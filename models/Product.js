@@ -40,6 +40,24 @@ const productSchema = mongoose.Schema(
       required: [true, "Product price is required"],
       min: [0, "Price must be a positive number"],
     },
+    discount: {
+      isActive: {
+        type: Boolean,
+        default: false,
+      },
+      percentage: {
+        type: Number,
+        min: 0,
+        max: 100,
+        default: 0,
+      },
+      startDate: {
+        type: Date,
+      },
+      endDate: {
+        type: Date,
+      }
+    },
     rating: {
       type: Number,
       default: 0,
@@ -83,6 +101,15 @@ const productSchema = mongoose.Schema(
   },
   { timestamps: true }
 );
-
+productSchema.virtual('discountedPrice').get(function() {
+  if (this.discount.isActive && 
+      this.discount.percentage > 0 && 
+      (!this.discount.endDate || new Date() <= this.discount.endDate) &&
+      (!this.discount.startDate || new Date() >= this.discount.startDate)) {
+    const discountAmount = (this.productPrice * this.discount.percentage) / 100;
+    return Number((this.productPrice - discountAmount).toFixed(2));
+  }
+  return this.productPrice;
+});
 
 export default mongoose.model("Product", productSchema);

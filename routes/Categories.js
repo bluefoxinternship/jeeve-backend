@@ -1,29 +1,33 @@
 import express from 'express';
 import categoryController from '../controllers/Categories.js';
-import { 
-  validateCategory, 
-  validateEditCategory, 
-  validateSubcategory, 
+import {
+  validateCategory,
+  validateEditCategory,
+  validateSubcategory,
   validateDeleteCategory,
-  errorHandler 
+  errorHandler,
 } from '../validation/CategoryValidation.js';
+import { isAdmin } from '../middlewares/AuthMiddleware.js';
 
 const router = express.Router();
 
 // Get all main categories
-router.get('/all-category', categoryController.getAllCategory);
+router.get('/categories',  categoryController.getAllCategory);
 
 // Get subcategories of a specific category
-router.get('/subcategories/:parentCategoryId', validateSubcategory, categoryController.getSubcategories);
+router.get('/categories/:parentCategoryId/subcategories', validateSubcategory, categoryController.getSubcategories);
 
-// Add category (main or subcategory)
-router.post('/add-category', validateCategory, categoryController.postAddCategory);
+// Get all nested categories
+router.get('/categories/nested', categoryController.getNestedCategories);
+
+// Add category
+router.post('/categories', isAdmin, validateCategory, categoryController.postAddCategory);
 
 // Edit category
-router.put('/edit-category/:cId', validateEditCategory, categoryController.putEditCategory);
+router.put('/categories/:cId', isAdmin, validateEditCategory, categoryController.putEditCategory);
 
 // Delete category
-router.delete('/delete-category/:cId', validateDeleteCategory, categoryController.deleteCategory);  // Updated route
+router.delete('/categories/:cId', isAdmin, validateDeleteCategory, categoryController.deleteCategory);
 
 // Apply error handling middleware
 router.use(errorHandler);

@@ -5,20 +5,20 @@ import {
   removeFromCart,
   updateCartItem,
 } from '../controllers/cartController.js';
-import { user } from '../middlewares/AuthMiddleware.js'; // Custom token validation middleware
+import { isUser } from '../middlewares/AuthMiddleware.js';
 
 const router = Router();
 
 // Add an item to the cart
-router.post('/cart', user, addToCart);
+router.post('/cart', isUser, addToCart);
 
 // Get the current user's cart
-router.get('/cart', user, getCart);
+router.get('/cart', isUser, getCart);
 
 // Remove an item from the cart
-router.delete('/cart/:id', user, removeFromCart);
+router.delete('/cart/:id', isUser, removeFromCart);
 
 // Update the quantity of an item in the cart
-router.put('/cart/:id', user, updateCartItem);
+router.put('/cart/:id', isUser, updateCartItem);
 
 export default router;
