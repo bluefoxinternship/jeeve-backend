@@ -112,8 +112,6 @@ export const verifyEsewaTransaction = async (oid, amt, refId) => {
 export const processCardTransaction = async (orderId, userId, cardDetails) => {
   const transactionId = generateTransactionId();
   
-  // In a real implementation, you would integrate with a payment gateway
-  // This is a simplified example
   const payment = new Payment({
     orderId,
     userId,
@@ -128,8 +126,7 @@ export const processCardTransaction = async (orderId, userId, cardDetails) => {
   });
 
   try {
-    // Simulate payment processing
-    // In reality, you would integrate with a payment gateway here
+
     const isSuccessful = true; // This would be the response from payment gateway
 
     if (isSuccessful) {
