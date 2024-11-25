@@ -6,7 +6,9 @@ import Product from "../models/Product.js";
 
 export const getAllProducts = async (req, res) => {
   try {
-    const products = await Product.find({}).populate("category", "cName cDescription").sort({createdAt:-1})
+    const products = await Product.find({})
+      .populate("category", "cName cDescription")
+      .sort({createdAt: -1});
     
     if (!products.length) {
       return res.status(404).json({
@@ -15,10 +17,27 @@ export const getAllProducts = async (req, res) => {
       });
     }
 
+    const formattedProducts = products.map(product => {
+      const isDiscountValid = product.discount.isActive && 
+        product.discount.percentage > 0 &&
+        (!product.discount.endDate || new Date() <= product.discount.endDate) &&
+        (!product.discount.startDate || new Date() >= product.discount.startDate);
+
+      return {
+        ...product.toObject(),
+        priceDetails: {
+          originalPrice: product.productPrice,
+          discountedPrice: product.discountedPrice,
+          discountPercentage: isDiscountValid ? product.discount.percentage : 0,
+          hasDiscount: isDiscountValid
+        }
+      };
+    });
+
     return res.status(200).json({
       status: "success",
       message: "Products retrieved successfully",
-      products,
+      products: formattedProducts,
     });
   } catch (error) {
     console.error("Error fetching products:", error);
@@ -73,11 +92,21 @@ export const createProduct = async (req, res) => {
       brand,
       countInStock,
       category,
+      discount,
     } = req.body;
 
-// Convert price to number if it's coming as string from form-data
-const price = Number(productPrice);
-const stock = Number(countInStock);
+    const price = Number(productPrice);
+    const stock = Number(countInStock);
+
+    let discountData = {};
+    if (discount) {
+      discountData = {
+        isActive: Boolean(discount.isActive),
+        percentage: Number(discount.percentage) || 0,
+        startDate: discount.startDate ? new Date(discount.startDate) : null,
+        endDate: discount.endDate ? new Date(discount.endDate) : null
+      };
+    }
 
     // Check if category exists
     const categoryExist = await categoryModel.findById(category);
@@ -124,6 +153,7 @@ const stock = Number(countInStock);
       countInStock: stock,
       productImage: productImageUrl,
       category,
+      discount: discountData 
     });
 
     await newProduct.save();
@@ -161,6 +191,7 @@ export const editProduct = async (req, res) => {
       brand,
       countInStock,
       category,
+      discount,
     } = req.body;
 
     // Build update object with type conversion for numeric fields
@@ -172,6 +203,15 @@ export const editProduct = async (req, res) => {
       ...(countInStock && { countInStock: Number(countInStock) }),
     };
 
+    if (discount) {
+      productUpdates.discount = {
+        isActive: Boolean(discount.isActive),
+        percentage: Number(discount.percentage) || 0,
+        startDate: discount.startDate ? new Date(discount.startDate) : null,
+        endDate: discount.endDate ? new Date(discount.endDate) : null
+      };
+    }
+    
     if (category) {
       const categoryExists = await categoryModel.findById(category);
       if (!categoryExists) {
