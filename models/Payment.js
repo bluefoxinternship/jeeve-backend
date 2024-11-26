@@ -13,7 +13,8 @@ const paymentSchema = new mongoose.Schema({
   },
   amount: {
     type: Number,
-    required: true
+    required: true,
+    min: 0
   },
   paymentMethod: {
     type: String,
@@ -42,12 +43,10 @@ const paymentSchema = new mongoose.Schema({
     type: Date,
     default: Date.now
   }
-});
+}, { timestamps: true });
 
-paymentSchema.pre('save', function(next) {
-  this.updatedAt = Date.now();
-  next();
-});
+paymentSchema.index({ transactionId: 1 });
+paymentSchema.index({ userId: 1, createdAt: -1 });
 
 const Payment = mongoose.model('Payment', paymentSchema);
 export default Payment;
