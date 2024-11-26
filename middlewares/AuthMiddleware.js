@@ -1,5 +1,6 @@
 import jwt from "jsonwebtoken"
 import 'dotenv/config';
+// import authMiddleware from "./auth";
 
 function getToken(req) {
   if (
@@ -108,3 +109,9 @@ export const isAdmin = (req, res, next) => {
     }
   }
 };
+const AuthMiddleware = {
+  isUser,
+  isAdmin,
+};
+
+export default AuthMiddleware;
