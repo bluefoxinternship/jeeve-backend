@@ -2,10 +2,11 @@ import 'dotenv/config';
 import express from 'express';
 import connectDB from './config/database.js'; 
 import ProductRoute from './routes/ProductRoute.js';
-import categoryRouter from './routes/Categories.js ';
-import PaymentRoute from './routes/PaymentRoutes.js';import cors from 'cors';
+import categoryRouter from './routes/Categories.js';
+import PaymentRoute from './routes/PaymentRoutes.js';import cors from 'cors';import brandRoutes from './routes/brandRoutes.js'
 import AuthRoute from './routes/AuthRoutes.js';
 import Cartroute from './routes/CartRoute.js';
+import searchRoutes from './routes/SearchRoutes.js';
 import UserRoute from './routes/UserRoutes.js';
 import orderRoutes from './routes/orderRoutes.js';
 import brandRoute from './routes/BrandRoutes.js'
@@ -31,9 +32,9 @@ app.get('/', (req, res) => {
 
 
 // Routes
-app.use(`${apiRoute}/v1`, [ProductRoute, AuthRoute, categoryRouter, Cartroute, PaymentRoute,orderRoutes,brandRoute ]);
+app.use(`${apiRoute}/v1`, [ProductRoute, AuthRoute, categoryRouter, Cartroute, PaymentRoute, searchRoutes,orderRoutes,brandRoute ]);
  app.use(`${apiRoute}/v1/user`, UserRoute)
-
+app.use(`${apiRoute}/v1/brands`, brandRoutes);
 const PORT = 8000;
 app.listen(PORT, () => {
     console.log(`Server is running on http://localhost:${PORT}`);
