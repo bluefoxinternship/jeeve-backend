@@ -1,8 +1,9 @@
 import { toTitleCase } from '../config/function.js';
 import categoryModel from '../models/Categories.js';
+import cloudinary from '../config/cloudinaryConfig.js';  // Import Cloudinary config
+import upload from '../middlewares/multer.js';  // Import multer middleware
 
 class Category {
-  // Get all categories
   async getAllCategory(req, res, next) {
     try {
       const categories = await categoryModel
@@ -13,14 +14,13 @@ class Category {
         success: true,
         message: categories.length ? 'Categories retrieved successfully' : 'No categories found',
         data: categories,
-        count: categories.length
+        count: categories.length,
       });
     } catch (err) {
       next(err);
     }
   }
 
-  // Get subcategories of a specific category
   async getSubcategories(req, res, next) {
     try {
       const { parentCategoryId } = req.params;
@@ -50,40 +50,62 @@ class Category {
     }
   }
 
-  // Add a new category
   async postAddCategory(req, res, next) {
     try {
       const { cName, cDescription, cStatus, parentCategory } = req.body;
 
-      // Check for existing category with same name
       const existingCategory = await categoryModel.findOne({
         cName: new RegExp(`^${cName}$`, 'i'),
-        parentCategory: parentCategory || null
+        parentCategory: parentCategory || null,
       });
 
       if (existingCategory) {
         return res.status(409).json({
           success: false,
-          message: 'Category already exists at this level'
+          message: 'Category already exists at this level',
         });
       }
 
-      // If it's a subcategory, verify parent exists
       if (parentCategory) {
         const parentExists = await categoryModel.findById(parentCategory);
         if (!parentExists) {
           return res.status(404).json({
             success: false,
-            message: 'Parent category not found'
+            message: 'Parent category not found',
           });
         }
+      }
+
+      let cImageUrl = null;
+
+      // Handle image upload to Cloudinary with async/await
+      if (req.file) {
+        const result = await new Promise((resolve, reject) => {
+          const uploadStream = cloudinary.uploader.upload_stream(
+            {
+              folder: "categories_images",
+              resource_type: 'auto' },
+
+            (error, result) => {
+              if (error) {
+                reject(error);
+              } else {
+                resolve(result);
+              }
+            }
+          );
+          uploadStream.end(req.file.buffer);
+        });
+
+        cImageUrl = result.secure_url;  // The URL of the uploaded image
       }
 
       const newCategory = new categoryModel({
         cName: toTitleCase(cName),
         cDescription,
         cStatus,
-        parentCategory: parentCategory || null
+        parentCategory: parentCategory || null,
+        cImage: cImageUrl || null,
       });
 
       await newCategory.save();
@@ -91,14 +113,13 @@ class Category {
       return res.status(201).json({
         success: true,
         message: 'Category created successfully',
-        data: newCategory
+        data: newCategory,
       });
     } catch (err) {
       next(err);
     }
   }
 
-  // Edit a category
   async putEditCategory(req, res, next) {
     try {
       const { cName, cDescription, cStatus, parentCategory } = req.body;
@@ -193,7 +214,6 @@ class Category {
     }
   }
 
-  // Delete a category
   async deleteCategory(req, res, next) {
     try {
       const { cId } = req.params;
@@ -226,6 +246,5 @@ class Category {
   }
 }  
 
-// Exporting the categoryController as default export
 const categoryController = new Category();
 export default categoryController;
