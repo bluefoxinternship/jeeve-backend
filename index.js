@@ -7,6 +7,7 @@ import PaymentRoute from './routes/PaymentRoutes.js';import cors from 'cors';
 import AuthRoute from './routes/AuthRoutes.js';
 import Cartroute from './routes/CartRoute.js';
 import UserRoute from './routes/UserRoutes.js';
+import orderRoutes from './routes/orderRoutes.js';
 
 const app = express();
 connectDB();
@@ -29,7 +30,7 @@ app.get('/', (req, res) => {
 
 
 // Routes
-app.use(`${apiRoute}/v1`, [ProductRoute, AuthRoute, categoryRouter, Cartroute, PaymentRoute ]);
+app.use(`${apiRoute}/v1`, [ProductRoute, AuthRoute, categoryRouter, Cartroute, PaymentRoute,orderRoutes ]);
  app.use(`${apiRoute}/v1/user`, UserRoute)
 
 const PORT = 8000;
