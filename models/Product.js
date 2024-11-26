@@ -1,4 +1,4 @@
-import mongoose, { Mongoose } from "mongoose";
+import mongoose from "mongoose";
 
 const reviewSchema = mongoose.Schema(
   {
@@ -56,7 +56,7 @@ const productSchema = mongoose.Schema(
       },
       endDate: {
         type: Date,
-      }
+      },
     },
     rating: {
       type: Number,
@@ -90,22 +90,36 @@ const productSchema = mongoose.Schema(
       default: [],
     },
     brand: {
-      type: String,
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Brand",
       required: [true, "Brand is required"],
     },
-    category: {
+    parentCategory: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "categories", // Reference to Category
+      ref: "categories", 
       required: [true, "Product category is required"],
+    },
+    subCategory: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "categories",
+      default: null,
+    },
+    childCategory: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "categories", 
+      default: null,
     },
   },
   { timestamps: true }
 );
-productSchema.virtual('discountedPrice').get(function() {
-  if (this.discount.isActive && 
-      this.discount.percentage > 0 && 
-      (!this.discount.endDate || new Date() <= this.discount.endDate) &&
-      (!this.discount.startDate || new Date() >= this.discount.startDate)) {
+
+productSchema.virtual("discountedPrice").get(function () {
+  if (
+    this.discount.isActive &&
+    this.discount.percentage > 0 &&
+    (!this.discount.endDate || new Date() <= this.discount.endDate) &&
+    (!this.discount.startDate || new Date() >= this.discount.startDate)
+  ) {
     const discountAmount = (this.productPrice * this.discount.percentage) / 100;
     return Number((this.productPrice - discountAmount).toFixed(2));
   }
