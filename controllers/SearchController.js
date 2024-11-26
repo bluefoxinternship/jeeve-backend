@@ -7,7 +7,7 @@ export const searchProducts = async (req, res) => {
     // Base search filter
     let searchFilter = {};
 
-    // Add text search for product name or brand
+    
     if (query) {
       searchFilter.$or = [
         { productName: { $regex: query, $options: 'i' } },
