@@ -12,14 +12,13 @@ const validateCategory = [
     .isLength({ min: 2, max: 50 }).withMessage('Category name must be between 2 and 50 characters'),
   
   body('cDescription')
+    .optional()
     .trim()
-    .notEmpty().withMessage('Category description is required')
     .isLength({ min: 10, max: 500 }).withMessage('Description must be between 10 and 500 characters'),
   
-  // body('cStatus')
-  //   .trim()
-  //   .notEmpty().withMessage('Status is required')
-  //   .isIn(['active', 'inactive']).withMessage('Status must be either active or inactive'),
+  body('cStatus')
+    .notEmpty().withMessage('Status is required')
+    .isIn(['active', 'inactive']).withMessage('Status must be either active or inactive'),
   
   body('parentCategory')
     .optional({ nullable: true })
@@ -33,9 +32,10 @@ const validateCategory = [
   validateResults
 ];
 
+
 // Specific validation for editing a category
 const validateEditCategory = [
-  body('cId')
+  param('cId')
     .notEmpty().withMessage('Category ID is required')
     .custom(value => {
       if (!isValidObjectId(value)) {
@@ -71,6 +71,7 @@ const validateEditCategory = [
   validateResults
 ];
 
+
 // Validation for getting subcategories
 const validateSubcategory = [
   param('parentCategoryId')
@@ -84,6 +85,7 @@ const validateSubcategory = [
 
   validateResults
 ];
+
 
 // Validation for deleting a category
 const validateDeleteCategory = [
@@ -99,6 +101,7 @@ const validateDeleteCategory = [
   validateResults
 ];
 
+
 // Helper function to validate results
 function validateResults(req, res, next) {
   const errors = validationResult(req);
@@ -108,6 +111,7 @@ function validateResults(req, res, next) {
       success: false,
       errors: errors.array().map(error => ({
         field: error.param,
+        location: error.location,
         message: error.msg
       }))
     });
@@ -115,11 +119,15 @@ function validateResults(req, res, next) {
   next();
 }
 
+
 // Global error handler
 const errorHandler = (err, req, res, next) => {
-  console.error(err);
+  console.error({
+    message: err.message,
+    stack: err.stack,
+    details: err
+  });
 
-  // Handle mongoose validation errors
   if (err.name === 'ValidationError') {
     return res.status(400).json({
       success: false,
@@ -131,7 +139,6 @@ const errorHandler = (err, req, res, next) => {
     });
   }
 
-  // Handle mongoose cast errors (invalid ObjectId)
   if (err.name === 'CastError') {
     return res.status(400).json({
       success: false,
@@ -140,7 +147,6 @@ const errorHandler = (err, req, res, next) => {
     });
   }
 
-  // Handle duplicate key errors
   if (err.code === 11000) {
     return res.status(409).json({
       success: false,
@@ -149,12 +155,12 @@ const errorHandler = (err, req, res, next) => {
     });
   }
 
-  // Default error
   res.status(err.status || 500).json({
     success: false,
     message: err.message || 'Internal Server Error'
   });
 };
+
 
 export { 
   validateCategory, 
