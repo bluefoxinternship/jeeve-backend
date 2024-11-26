@@ -6,6 +6,7 @@ import categoryRouter from './routes/Categories.js ';
 import PaymentRoute from './routes/PaymentRoutes.js';
 import AuthRoute from './routes/AuthRoutes.js';
 import Cartroute from './routes/CartRoute.js';
+import searchRoutes from './routes/SearchRoutes.js';
 
 const app = express();
 connectDB();
@@ -21,7 +22,7 @@ app.get('/', (req, res) => {
 
 
 // Routes
-app.use(`${apiRoute}/v1`, [ProductRoute, AuthRoute, categoryRouter, Cartroute, PaymentRoute]);
+app.use(`${apiRoute}/v1`, [ProductRoute, AuthRoute, categoryRouter, Cartroute, PaymentRoute, searchRoutes]);
  
 const PORT = 8000;
 app.listen(PORT, () => {
