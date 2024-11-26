@@ -6,9 +6,9 @@ import {
   getPaymentStatus 
 } from '../controllers/PaymentController.js';
 import { paymentValidation, cardPaymentValidation } from '../validation/PaymentValidation.js';
-import { user } from '../middlewares/AuthMiddleware.js';
 import validateRequest from '../middlewares/ValidateRequest.js';
 import rateLimit from 'express-rate-limit';
+import { isUser } from '../middlewares/AuthMiddleware.js';
 
 const router = Router();
 
@@ -18,9 +18,9 @@ const paymentLimiter = rateLimit({
   message: 'Too many payment attempts from this IP'
 });
 
-router.post('/initiate', user, paymentValidation, validateRequest, paymentLimiter, initiatePayment);
+router.post('/initiate', isUser, paymentValidation, validateRequest, paymentLimiter, initiatePayment);
 router.get('/esewa/verify', verifyEsewaPayment);
-router.post('/card/process', user, cardPaymentValidation, validateRequest, paymentLimiter, processCardPayment);
-router.get('/status/:paymentId', user, getPaymentStatus);
+router.post('/card/process', isUser, cardPaymentValidation, validateRequest, paymentLimiter, processCardPayment);
+router.get('/status/:paymentId', isUser, getPaymentStatus);
 
 export default router;
