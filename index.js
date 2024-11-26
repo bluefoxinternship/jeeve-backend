@@ -7,6 +7,7 @@ import PaymentRoute from './routes/PaymentRoutes.js';import cors from 'cors';
 import AuthRoute from './routes/AuthRoutes.js';
 import Cartroute from './routes/CartRoute.js';
 import UserRoute from './routes/UserRoutes.js';
+import orderRoutes from './routes/orderRoutes.js';
 import brandRoute from './routes/BrandRoutes.js'
 
 const app = express();
@@ -30,7 +31,7 @@ app.get('/', (req, res) => {
 
 
 // Routes
-app.use(`${apiRoute}/v1`, [ProductRoute, AuthRoute, categoryRouter, Cartroute, PaymentRoute,brandRoute ]);
+app.use(`${apiRoute}/v1`, [ProductRoute, AuthRoute, categoryRouter, Cartroute, PaymentRoute,orderRoutes,brandRoute ]);
  app.use(`${apiRoute}/v1/user`, UserRoute)
 
 const PORT = 8000;
