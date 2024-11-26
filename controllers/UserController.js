@@ -44,8 +44,6 @@ export const getProfile = async (req, res) => {
   }
 };
 
-
-
 export const changePassword = async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {

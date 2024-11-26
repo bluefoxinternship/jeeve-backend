@@ -73,7 +73,7 @@ const userSchema = new mongoose.Schema(
     },
     user_type: {
       type: String,
-      enum: ["patient", "admin", "vendor", null],
+      enum: ["patient", "admin", "vendor", null,"user"],
       required: true,
       default: "patient", // Default user type
     },
