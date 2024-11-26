@@ -1,5 +1,6 @@
 import jwt from "jsonwebtoken"
 import 'dotenv/config';
+// import authMiddleware from "./auth";
 
 function getToken(req) {
   if (
@@ -11,7 +12,7 @@ function getToken(req) {
   return null;
 }
 
-export const user = (req, res, next) => {
+export const isUser = (req, res, next) => {
   const token = getToken(req);
 
   if (!token) {
@@ -48,6 +49,7 @@ export const user = (req, res, next) => {
     // Attach user information to the request
     req.user = {
       id: decoded.id,
+      user_type: decoded.user_type,
       // email: decoded.email, // Add these if they exist in your token payload
       // name: decoded.name,
     };
@@ -55,3 +57,61 @@ export const user = (req, res, next) => {
     next();
   });
 };
+
+// isAdmin middleware
+export const isAdmin = (req, res, next) => {
+  try {
+    // Extract the token from Authorization header
+    const token = req.headers.authorization?.split(' ')[1];
+
+    // Check if token exists
+    if (!token) {
+      return res.status(401).json({
+        status: 'error',
+        message: "Authorization token is missing"
+      });
+    }
+
+    // Verify the token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    // Check if user type is admin
+    if (decoded.user_type !== 'admin') {
+      return res.status(403).json({
+        status: 'error',
+        message: "Not authorized. Admin access required"
+      });
+    }
+
+    // Attach decoded user info to request for further use
+    req.user = decoded;
+    next();
+
+  } catch (err) {
+    // Handle different types of JWT errors
+    switch (err.name) {
+      case 'JsonWebTokenError':
+        return res.status(401).json({
+          status: 'error',
+          message: "Invalid token"
+        });
+      case 'TokenExpiredError':
+        return res.status(401).json({
+          status: 'error',
+          message: "Token has expired"
+        });
+      default:
+        console.error('Admin check middleware error:', err);
+        return res.status(500).json({
+          status: 'error',
+          message: "Internal server error during authentication"
+        });
+    }
+  }
+};
+const AuthMiddleware = {
+  isUser,
+  isAdmin,
+};
+
+export default AuthMiddleware;

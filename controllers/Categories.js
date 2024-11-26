@@ -24,7 +24,8 @@ class Category {
   async getSubcategories(req, res, next) {
     try {
       const { parentCategoryId } = req.params;
-
+  
+      // Check if parent category exists
       const parentCategory = await categoryModel.findById(parentCategoryId);
       if (!parentCategory) {
         return res.status(404).json({
@@ -32,11 +33,11 @@ class Category {
           message: 'Parent category not found',
         });
       }
-
+  
       const subcategories = await categoryModel
         .find({ parentCategory: parentCategoryId })
         .sort({ _id: -1 });
-
+  
       return res.status(200).json({
         success: true,
         message: subcategories.length ? 'Subcategories retrieved successfully' : 'No subcategories found',
@@ -121,15 +122,25 @@ class Category {
 
   async putEditCategory(req, res, next) {
     try {
-      const { cId, cName, cDescription, cStatus, parentCategory } = req.body;
-
+      const { cName, cDescription, cStatus, parentCategory } = req.body;
+      const { cId } = req.params; // Extract cId from URL parameters
+  
+      // Check if cId is provided
+      if (!cId) {
+        return res.status(400).json({
+          success: false,
+          message: 'Category ID is required',
+        });
+      }
+  
+      // If name is being updated, check for duplicates
       if (cName) {
         const existingCategory = await categoryModel.findOne({
           cName: new RegExp(`^${cName}$`, 'i'),
           _id: { $ne: cId },
           parentCategory: parentCategory || null,
         });
-
+  
         if (existingCategory) {
           return res.status(409).json({
             success: false,
@@ -137,7 +148,8 @@ class Category {
           });
         }
       }
-
+  
+      // If changing parent category, verify it exists
       if (parentCategory) {
         const parentExists = await categoryModel.findById(parentCategory);
         if (!parentExists) {
@@ -147,28 +159,8 @@ class Category {
           });
         }
       }
-
-      let cImageUrl = req.body.cImage;
-
-      // Handle image upload to Cloudinary if a new image is provided
-      if (req.file) {
-        const result = await new Promise((resolve, reject) => {
-          const uploadStream = cloudinary.uploader.upload_stream(
-            { resource_type: 'auto' },
-            (error, result) => {
-              if (error) {
-                reject(error);
-              } else {
-                resolve(result);
-              }
-            }
-          );
-          uploadStream.end(req.file.buffer);
-        });
-
-        cImageUrl = result.secure_url;  // Get the secure URL from the result
-      }
-
+  
+      // Update the category
       const updatedCategory = await categoryModel.findByIdAndUpdate(
         cId,
         {
@@ -176,19 +168,18 @@ class Category {
           ...(cDescription && { cDescription }),
           ...(cStatus && { cStatus }),
           ...(parentCategory !== undefined && { parentCategory: parentCategory || null }),
-          cImage: cImageUrl || undefined,
           updatedAt: Date.now(),
         },
         { new: true }
       );
-
+  
       if (!updatedCategory) {
         return res.status(404).json({
           success: false,
           message: 'Category not found',
         });
       }
-
+  
       return res.status(200).json({
         success: true,
         message: 'Category updated successfully',
@@ -198,11 +189,36 @@ class Category {
       next(err);
     }
   }
+  
+//get nestedcategory
+  async getNestedCategories(req, res, next) {
+    try {
+      const buildCategoryTree = async (parentId = null) => {
+        const categories = await categoryModel.find({ parentCategory: parentId }).sort({ _id: -1 });
+        return Promise.all(
+          categories.map(async (category) => ({
+            ...category.toObject(),
+            subcategories: await buildCategoryTree(category._id),
+          }))
+        );
+      };
+  
+      const categoryTree = await buildCategoryTree();
+      return res.status(200).json({
+        success: true,
+        message: 'Categories retrieved successfully',
+        data: categoryTree,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
 
   async deleteCategory(req, res, next) {
     try {
       const { cId } = req.params;
-
+  
+      // Check if category or any descendant subcategories exist
       const hasSubcategories = await categoryModel.exists({ parentCategory: cId });
       if (hasSubcategories) {
         return res.status(409).json({
@@ -210,7 +226,7 @@ class Category {
           message: 'Cannot delete category with existing subcategories. Please delete subcategories first.',
         });
       }
-
+  
       const deletedCategory = await categoryModel.findByIdAndDelete(cId);
       if (!deletedCategory) {
         return res.status(404).json({
@@ -218,7 +234,7 @@ class Category {
           message: 'Category not found',
         });
       }
-
+  
       return res.status(200).json({
         success: true,
         message: 'Category deleted successfully',
@@ -228,7 +244,7 @@ class Category {
       next(err);
     }
   }
-}
+}  
 
 const categoryController = new Category();
 export default categoryController;

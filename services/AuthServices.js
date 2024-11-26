@@ -1,5 +1,5 @@
 // services/AuthService.js
-import User from '../models/UserModel.js'; // Import User model using ES module syntax
+import User from '../models/User.js'; // Import User model using ES module syntax
 
 // Find user by mobile number
 export const findUserByMobile = async (mobile) => {

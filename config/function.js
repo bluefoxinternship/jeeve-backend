@@ -1,4 +1,4 @@
-import userModel from '../models/UserModel.js';
+import userModel from '../models/User.js';
 
 // Convert string to Title Case
 export const toTitleCase = (str) => {
