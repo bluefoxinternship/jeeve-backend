@@ -7,7 +7,9 @@ import Product from "../models/Product.js";
 export const getAllProducts = async (req, res) => {
   try {
     const products = await Product.find({})
-      .populate("category", "cName cDescription")
+    .populate("parentCategory", "cName cDescription")
+    .populate("subCategory", "cName cDescription")
+    .populate("childCategory", "cName cDescription")
       .sort({createdAt: -1});
     
     if (!products.length) {
@@ -60,7 +62,9 @@ export const getProductById = async (req, res) => {
       });
     }
 
-    const product = await Product.findById(id).populate("category", "cName cDescription");
+    const product = await Product.findById(id).populate("parentCategory", "cName cDescription")
+    .populate("subCategory", "cName cDescription")
+    .populate("childCategory", "cName cDescription");
 
     if (!product) {
       return res.status(404).json({
@@ -91,7 +95,9 @@ export const createProduct = async (req, res) => {
       productPrice,
       brand,
       countInStock,
-      category,
+      parentCategory,
+      subCategory,
+      childCategory,
       discount,
     } = req.body;
 
@@ -108,14 +114,36 @@ export const createProduct = async (req, res) => {
       };
     }
 
-    // Check if category exists
-    const categoryExist = await categoryModel.findById(category);
-    if (!categoryExist) {
-      return res.status(400).json({
-        status: "error",
-        message: "Category does not exist",
-      });
-    }
+   // Check if category exists
+const categoryExist = await categoryModel.findById(parentCategory);
+if (!categoryExist) {
+  return res.status(400).json({
+    status: "error",
+    message: " parent category does not exist",
+  });
+}
+
+// Ensure subcategory and child category are valid
+if (subCategory) {
+  const validSubCategory = await categoryModel.findOne({ _id: subCategory, parentCategory: categoryExist._id });
+  if (!validSubCategory) {
+    return res.status(400).json({
+      status: "error",
+      message: "Subcategory must belong to the selected parent category",
+    });
+  }
+}
+
+if (childCategory) {
+  const validChildCategory = await categoryModel.findOne({ _id: childCategory, parentCategory: subCategory });
+  if (!validChildCategory) {
+    return res.status(400).json({
+      status: "error",
+      message: "Child category must belong to the selected subcategory",
+    });
+  }
+}
+
 
     // Upload image to Cloudinary if file is present
     let productImageUrl = null;
@@ -152,7 +180,9 @@ export const createProduct = async (req, res) => {
       brand,
       countInStock: stock,
       productImage: productImageUrl,
-      category,
+      parentCategory,
+      subCategory,
+      childCategory,
       discount: discountData 
     });
 
@@ -190,7 +220,9 @@ export const editProduct = async (req, res) => {
       productPrice,
       brand,
       countInStock,
-      category,
+      parentCategory,
+      subCategory,
+      childCategory,
       discount,
     } = req.body;
 
@@ -212,16 +244,36 @@ export const editProduct = async (req, res) => {
       };
     }
     
-    if (category) {
-      const categoryExists = await categoryModel.findById(category);
-      if (!categoryExists) {
-        return res.status(404).json({
-          status: "error",
-          message: "Category not found",
-        });
-      }
-      productUpdates.category = category;
-    }
+    // Check if category exists
+const categoryExist = await categoryModel.findById(parentCategory);
+if (!categoryExist) {
+  return res.status(400).json({
+    status: "error",
+    message: "Category does not exist",
+  });
+}
+
+// Ensure subcategory and child category are valid
+if (subCategory) {
+  const validSubCategory = await categoryModel.findOne({ _id: subCategory, parentCategory: categoryExist._id });
+  if (!validSubCategory) {
+    return res.status(400).json({
+      status: "error",
+      message: "Subcategory must belong to the selected parent category",
+    });
+  }
+}
+
+if (childCategory) {
+  const validChildCategory = await categoryModel.findOne({ _id: childCategory, parentCategory: subCategory });
+  if (!validChildCategory) {
+    return res.status(400).json({
+      status: "error",
+      message: "Child category must belong to the selected subcategory",
+    });
+  }
+}
+
 
     if (req.file) {
       try {
@@ -317,3 +369,151 @@ export const deleteProduct = async (req, res) => {
     });
   }
 };
+
+export const getProductsByCategory = async (req, res) => {
+  try {
+    const { categoryId } = req.params; 
+
+    const category = await categoryModel.findById(categoryId);
+    if (!category) {
+      return res.status(404).json({
+        status: "error",
+        message: "Category not found.",
+      });
+    }
+
+    // This function should return all category IDs (parent, sub, and child)
+    const getAllCategoryIds = async (parentId) => {
+      const subcategories = await categoryModel.find({ parentCategory: parentId });
+      const subcategoryIds = subcategories.map((sub) => sub._id);
+
+      const nestedIds = await Promise.all(subcategoryIds.map(getAllCategoryIds));
+      return [parentId, ...subcategoryIds, ...nestedIds.flat()];
+    };
+
+    const categoryIds = await getAllCategoryIds(categoryId);
+
+    const products = await Product.find({ 
+      $or: [
+        { parentCategory: { $in: categoryIds } },
+        { subCategory: { $in: categoryIds } },
+        { childCategory: { $in: categoryIds } }
+      ]
+    })
+      .populate("parentCategory", "cName cDescription")
+      .populate("subCategory", "cName cDescription")
+      .populate("childCategory", "cName cDescription")
+      .sort({ productPrice: 1 }); // Optional: sort by price
+
+    return res.status(200).json({
+      status: "success",
+      message: `Products retrieved successfully for category "${category.cName}"`,
+      category: category.cName,
+      products,
+    });
+  } catch (error) {
+    console.error("Error fetching products by category:", error);
+    return res.status(500).json({
+      status: "error",
+      message: error.message || "Server Error",
+    });
+  }
+};
+
+
+export const getSortedProducts = async (req, res) => {
+  try {
+    const { sort, category } = req.query;
+
+    // Check if category is provided
+    if (!category) {
+      return res.status(400).json({
+        status: "error",
+        message: "Category is required for sorting.",
+      });
+    }
+
+    if (!sort || (sort !== "low-to-high" && sort !== "high-to-low")) {
+      return res.status(400).json({
+        status: "error",
+        message: "Invalid sort parameter. Use 'low-to-high' or 'high-to-low'.",
+      });
+    }
+
+    const sortOrder = sort === "low-to-high" ? 1 : -1;
+
+    const filter = { category }; // Ensure category is always included in the filter
+
+    const products = await Product.find(filter)
+    .populate("parentCategory", "cName cDescription")
+    .populate("subCategory", "cName cDescription")
+    .populate("childCategory", "cName cDescription")
+      .sort({ productPrice: sortOrder });
+
+    if (!products.length) {
+      return res.status(404).json({
+        status: "error",
+        message: "No products found in the specified category.",
+      });
+    }
+
+    return res.status(200).json({
+      status: "success",
+      message: `Products sorted by price ${sort.replace("-", " ")}`,
+      products,
+    });
+  } catch (error) {
+    console.error("Error sorting products:", error);
+    return res.status(500).json({
+      status: "error",
+      message: error.message || "Server Error",
+    });
+  }
+};
+
+
+
+export const getFilteredProducts = async (req, res) => {
+  try {
+    const { minPrice, maxPrice, category } = req.query;
+
+    // Check if category is provided
+    if (!category) {
+      return res.status(400).json({
+        status: "error",
+        message: "Category is required for filtering.",
+      });
+    }
+
+    const filter = { category }; // Ensure category is always included in the filter
+    if (minPrice) filter.productPrice = { $gte: Number(minPrice) };
+    if (maxPrice) filter.productPrice = { ...filter.productPrice, $lte: Number(maxPrice) };
+
+    const products = await Product.find(filter)
+    .populate("parentCategory", "cName cDescription")
+    .populate("subCategory", "cName cDescription")
+    .populate("childCategory", "cName cDescription")
+      .sort({ productPrice: 1 }); // Optional: default sorting by price
+
+    if (!products.length) {
+      return res.status(404).json({
+        status: "error",
+        message: "No products found in the specified category and price range.",
+      });
+    }
+
+    return res.status(200).json({
+      status: "success",
+      message: "Products filtered successfully.",
+      products,
+    });
+  } catch (error) {
+    console.error("Error filtering products:", error);
+    return res.status(500).json({
+      status: "error",
+      message: error.message || "Server Error",
+    });
+  }
+};
+
+

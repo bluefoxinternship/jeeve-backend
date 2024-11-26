@@ -4,10 +4,12 @@ import {
   deleteProduct,
   editProduct,
   getAllProducts,
+  getFilteredProducts,
   getProductById,
+  getProductsByCategory,
+  getSortedProducts,
 } from "../controllers/ProductController.js";
 import upload from "../middlewares/multer.js";
-import cloudinary from "../config/cloudinaryConfig.js";
 import {
   productIdValidation,
   productValidationRules,
@@ -50,6 +52,9 @@ router.delete(
   deleteProduct
 );
 
+router.get("/products/sort",  getSortedProducts); 
+router.get("/products/filter", getFilteredProducts); 
+router.get("/products/category/:categoryId", getProductsByCategory);
 
 
 export default router;
