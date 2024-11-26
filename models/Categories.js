@@ -19,11 +19,22 @@ const categorySchema = new mongoose.Schema(
     },
     parentCategory: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'categories', // References the same category model
-      default: null, // Null for main categories, will be the parent ID for subcategories
+      ref: 'categories',
+      default: null,
+    },
+    cImage: {
+      type: String,
+      default: null,
+      validate: {
+        validator: function (v) {
+          if (!v) return true;
+          return /^https?:\/\/.+\.(jpg|jpeg|png|webp|avif|gif|svg)$/.test(v);
+        },
+        message: 'Please enter a valid image URL (jpg, jpeg, png, webp, avif, gif, svg)',
+      },
     },
   },
-  { timestamps: true } // Automatically adds createdAt and updatedAt fields
+  { timestamps: true }
 );
 
 // Create and export the model

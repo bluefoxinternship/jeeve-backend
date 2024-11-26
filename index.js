@@ -2,8 +2,8 @@ import 'dotenv/config';
 import express from 'express';
 import connectDB from './config/database.js'; 
 import ProductRoute from './routes/ProductRoute.js';
-import categoryRouter from './routes/Categories.js ';
-
+import categoryRouter from './routes/Categories.js';
+import brandRoutes from './routes/brandRoutes.js'
 import AuthRoute from './routes/AuthRoutes.js';
 import Cartroute from './routes/CartRoute.js';
 
@@ -22,7 +22,7 @@ app.get('/', (req, res) => {
 
 // Routes
 app.use(`${apiRoute}/v1`, [ProductRoute, AuthRoute, categoryRouter,Cartroute]);
-
+app.use(`${apiRoute}/v1/brands`, brandRoutes);
 const PORT = 8000;
 app.listen(PORT, () => {
     console.log(`Server is running on http://localhost:${PORT}`);

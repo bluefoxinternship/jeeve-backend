@@ -1,12 +1,13 @@
 import express from 'express';
 import categoryController from '../controllers/Categories.js';
-import { 
-  validateCategory, 
-  validateEditCategory, 
-  validateSubcategory, 
+import {
+  validateCategory,
+  validateEditCategory,
+  validateSubcategory,
   validateDeleteCategory,
-  errorHandler 
-} from '../validation/CategoryValidation.js';
+  errorHandler
+} from '../validation/Categoryvalidation.js';
+import upload from '../middlewares/multer.js';  // Import multer middleware
 
 const router = express.Router();
 
@@ -17,13 +18,13 @@ router.get('/all-category', categoryController.getAllCategory);
 router.get('/subcategories/:parentCategoryId', validateSubcategory, categoryController.getSubcategories);
 
 // Add category (main or subcategory)
-router.post('/add-category', validateCategory, categoryController.postAddCategory);
+router.post('/add-category', upload.single('cImage'), validateCategory, categoryController.postAddCategory);
 
 // Edit category
-router.put('/edit-category/:cId', validateEditCategory, categoryController.putEditCategory);
+router.put('/edit-category/:cId', upload.single('cImage'), validateEditCategory, categoryController.putEditCategory);
 
 // Delete category
-router.delete('/delete-category/:cId', validateDeleteCategory, categoryController.deleteCategory);  // Updated route
+router.delete('/delete-category/:cId', validateDeleteCategory, categoryController.deleteCategory);
 
 // Apply error handling middleware
 router.use(errorHandler);

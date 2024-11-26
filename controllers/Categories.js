@@ -1,8 +1,9 @@
 import { toTitleCase } from '../config/function.js';
 import categoryModel from '../models/Categories.js';
+import cloudinary from '../config/cloudinaryConfig.js';  // Import Cloudinary config
+import upload from '../middlewares/multer.js';  // Import multer middleware
 
 class Category {
-  // Get all categories
   async getAllCategory(req, res, next) {
     try {
       const categories = await categoryModel
@@ -13,24 +14,22 @@ class Category {
         success: true,
         message: categories.length ? 'Categories retrieved successfully' : 'No categories found',
         data: categories,
-        count: categories.length
+        count: categories.length,
       });
     } catch (err) {
       next(err);
     }
   }
 
-  // Get subcategories of a specific category
   async getSubcategories(req, res, next) {
     try {
       const { parentCategoryId } = req.params;
-      
-      // First check if parent category exists
+
       const parentCategory = await categoryModel.findById(parentCategoryId);
       if (!parentCategory) {
         return res.status(404).json({
           success: false,
-          message: 'Parent category not found'
+          message: 'Parent category not found',
         });
       }
 
@@ -43,47 +42,69 @@ class Category {
         message: subcategories.length ? 'Subcategories retrieved successfully' : 'No subcategories found',
         data: subcategories,
         count: subcategories.length,
-        parentCategory: parentCategory.cName
+        parentCategory: parentCategory.cName,
       });
     } catch (err) {
       next(err);
     }
   }
 
-  // Add a new category
   async postAddCategory(req, res, next) {
     try {
       const { cName, cDescription, cStatus, parentCategory } = req.body;
 
-      // Check for existing category with same name
       const existingCategory = await categoryModel.findOne({
         cName: new RegExp(`^${cName}$`, 'i'),
-        parentCategory: parentCategory || null
+        parentCategory: parentCategory || null,
       });
 
       if (existingCategory) {
         return res.status(409).json({
           success: false,
-          message: 'Category already exists at this level'
+          message: 'Category already exists at this level',
         });
       }
 
-      // If it's a subcategory, verify parent exists
       if (parentCategory) {
         const parentExists = await categoryModel.findById(parentCategory);
         if (!parentExists) {
           return res.status(404).json({
             success: false,
-            message: 'Parent category not found'
+            message: 'Parent category not found',
           });
         }
+      }
+
+      let cImageUrl = null;
+
+      // Handle image upload to Cloudinary with async/await
+      if (req.file) {
+        const result = await new Promise((resolve, reject) => {
+          const uploadStream = cloudinary.uploader.upload_stream(
+            {
+              folder: "categories_images",
+              resource_type: 'auto' },
+
+            (error, result) => {
+              if (error) {
+                reject(error);
+              } else {
+                resolve(result);
+              }
+            }
+          );
+          uploadStream.end(req.file.buffer);
+        });
+
+        cImageUrl = result.secure_url;  // The URL of the uploaded image
       }
 
       const newCategory = new categoryModel({
         cName: toTitleCase(cName),
         cDescription,
         cStatus,
-        parentCategory: parentCategory || null
+        parentCategory: parentCategory || null,
+        cImage: cImageUrl || null,
       });
 
       await newCategory.save();
@@ -91,43 +112,61 @@ class Category {
       return res.status(201).json({
         success: true,
         message: 'Category created successfully',
-        data: newCategory
+        data: newCategory,
       });
     } catch (err) {
       next(err);
     }
   }
 
-  // Edit a category
   async putEditCategory(req, res, next) {
     try {
       const { cId, cName, cDescription, cStatus, parentCategory } = req.body;
 
-      // If name is being updated, check for duplicates
       if (cName) {
         const existingCategory = await categoryModel.findOne({
           cName: new RegExp(`^${cName}$`, 'i'),
           _id: { $ne: cId },
-          parentCategory: parentCategory || null
+          parentCategory: parentCategory || null,
         });
 
         if (existingCategory) {
           return res.status(409).json({
             success: false,
-            message: 'Category name already exists at this level'
+            message: 'Category name already exists at this level',
           });
         }
       }
 
-      // If changing parent category, verify it exists
       if (parentCategory) {
         const parentExists = await categoryModel.findById(parentCategory);
         if (!parentExists) {
           return res.status(404).json({
             success: false,
-            message: 'Parent category not found'
+            message: 'Parent category not found',
           });
         }
+      }
+
+      let cImageUrl = req.body.cImage;
+
+      // Handle image upload to Cloudinary if a new image is provided
+      if (req.file) {
+        const result = await new Promise((resolve, reject) => {
+          const uploadStream = cloudinary.uploader.upload_stream(
+            { resource_type: 'auto' },
+            (error, result) => {
+              if (error) {
+                reject(error);
+              } else {
+                resolve(result);
+              }
+            }
+          );
+          uploadStream.end(req.file.buffer);
+        });
+
+        cImageUrl = result.secure_url;  // Get the secure URL from the result
       }
 
       const updatedCategory = await categoryModel.findByIdAndUpdate(
@@ -137,7 +176,8 @@ class Category {
           ...(cDescription && { cDescription }),
           ...(cStatus && { cStatus }),
           ...(parentCategory !== undefined && { parentCategory: parentCategory || null }),
-          updatedAt: Date.now()
+          cImage: cImageUrl || undefined,
+          updatedAt: Date.now(),
         },
         { new: true }
       );
@@ -145,31 +185,29 @@ class Category {
       if (!updatedCategory) {
         return res.status(404).json({
           success: false,
-          message: 'Category not found'
+          message: 'Category not found',
         });
       }
 
       return res.status(200).json({
         success: true,
         message: 'Category updated successfully',
-        data: updatedCategory
+        data: updatedCategory,
       });
     } catch (err) {
       next(err);
     }
   }
 
-  // Delete a category
   async deleteCategory(req, res, next) {
     try {
       const { cId } = req.params;
 
-      // Check if category has subcategories
       const hasSubcategories = await categoryModel.exists({ parentCategory: cId });
       if (hasSubcategories) {
         return res.status(409).json({
           success: false,
-          message: 'Cannot delete category with existing subcategories. Please delete subcategories first.'
+          message: 'Cannot delete category with existing subcategories. Please delete subcategories first.',
         });
       }
 
@@ -177,14 +215,14 @@ class Category {
       if (!deletedCategory) {
         return res.status(404).json({
           success: false,
-          message: 'Category not found'
+          message: 'Category not found',
         });
       }
 
       return res.status(200).json({
         success: true,
         message: 'Category deleted successfully',
-        data: deletedCategory
+        data: deletedCategory,
       });
     } catch (err) {
       next(err);
@@ -192,6 +230,5 @@ class Category {
   }
 }
 
-// Exporting the categoryController as default export
 const categoryController = new Category();
 export default categoryController;
