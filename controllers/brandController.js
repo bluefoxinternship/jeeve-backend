@@ -1,6 +1,8 @@
 // controllers/brandController.js
 import brandService from '../services/BrandServices.js';
 import upload from '../middlewares/multer.js';  // Ensure correct import for multer
+import Brand from '../models/Brand.js';
+import Product from '../models/Product.js';
 
 // Create a new brand with an image
 const createBrand = (req, res) => {
@@ -69,7 +71,30 @@ const deleteBrand = async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
+}
+const brandOfTheWeek =async (req, res) => {
+  try {
+    // Fetch the Brand of the Week
+    const brand = await Brand.findOne({ isBrandOfTheWeek: true });
+
+    if (!brand) {
+      return res.status(404).json({ message: "No Brand of the Week found." });
+    }
+
+    // Fetch products for the Brand of the Week
+    const products = await Product.find({ brand: brand._id });
+
+    // Respond with the brand and its products
+    res.status(200).json({
+      brand,
+      products,
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Server Error", error: error.message });
+  }
 };
+
+
 
 export default {
   createBrand,
@@ -77,4 +102,6 @@ export default {
   getBrandById,
   updateBrand,
   deleteBrand,
+  brandOfTheWeek,
 };
+
