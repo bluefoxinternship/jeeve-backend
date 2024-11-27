@@ -1,3 +1,4 @@
+import slugify from "slugify";
 import cloudinary from "../config/cloudinaryConfig.js";
 
 import categoryModel from "../models/Categories.js";
@@ -24,7 +25,7 @@ export const getAllProducts = async (req, res) => {
         product.discount.percentage > 0 &&
         (!product.discount.endDate || new Date() <= product.discount.endDate) &&
         (!product.discount.startDate || new Date() >= product.discount.startDate);
-
+    
       return {
         ...product.toObject(),
         priceDetails: {
@@ -32,9 +33,18 @@ export const getAllProducts = async (req, res) => {
           discountedPrice: product.discountedPrice,
           discountPercentage: isDiscountValid ? product.discount.percentage : 0,
           hasDiscount: isDiscountValid
-        }
+        },
+        seoTitle: product.seoTitle,
+        seoDescription: product.seoDescription,
+        highlights: product.highlights,
+        specifications: product.specifications,
+        weight: product.weight,
+        status: product.status,
+        color: product.color,
+        slug: product.slug,
       };
     });
+    
 
     return res.status(200).json({
       status: "success",
@@ -99,7 +109,36 @@ export const createProduct = async (req, res) => {
       subCategory,
       childCategory,
       discount,
+      weight,
+      status,
+      seoDescription,
+      seoTitle,
+      highlights,
+      specifications,
+      color,
+      slug,
     } = req.body;
+
+
+     // Check for slug or generate one
+     let finalSlug = slug;
+     if (!slug) {
+       finalSlug = slugify(productName, { lower: true, strict: true });
+     } else if (!slug.match(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)) {
+       return res.status(400).json({
+         status: "error",
+         message: "Provided slug is invalid. Use lowercase alphanumeric with dashes.",
+       });
+     }
+ 
+     // Ensure slug is unique
+     const existingSlug = await Product.findOne({ slug: finalSlug });
+     if (existingSlug) {
+       return res.status(400).json({
+         status: "error",
+         message: "Slug is already in use. Please choose another.",
+       });
+     }
 
     const price = Number(productPrice);
     const stock = Number(countInStock);
@@ -176,16 +215,24 @@ if (childCategory) {
     const newProduct = new Product({
       productName,
       productDetail,
-      productPrice: price,
+      productPrice: Number(productPrice),
       brand,
-      countInStock: stock,
+      countInStock: Number(countInStock),
       productImage: productImageUrl,
       parentCategory,
       subCategory,
       childCategory,
-      discount: discountData 
+      discount: discountData,
+      weight: Number(weight),
+      status,
+      seoDescription,
+      seoTitle,
+      highlights,
+      specifications: specifications ? JSON.parse(specifications) : {}, // Ensure specifications are stored as an object
+      color,
+      slug,
     });
-
+    
     await newProduct.save();
 
     return res.status(201).json({
@@ -224,6 +271,14 @@ export const editProduct = async (req, res) => {
       subCategory,
       childCategory,
       discount,
+      weight,
+      status,
+      seoDescription,
+      seoTitle,
+      highlights,
+      specifications,
+      color,
+      slug,
     } = req.body;
 
     // Build update object with type conversion for numeric fields
@@ -233,14 +288,44 @@ export const editProduct = async (req, res) => {
       ...(productPrice && { productPrice: Number(productPrice) }),
       ...(brand && { brand }),
       ...(countInStock && { countInStock: Number(countInStock) }),
+      ...(weight && { weight: Number(weight) }),
+      ...(status && { status }),
+      ...(seoDescription && { seoDescription }),
+      ...(seoTitle && { seoTitle }),
+      ...(highlights && { highlights }),
+      ...(specifications && { specifications: JSON.parse(specifications) }),
+      ...(color && { color }),
+      ...(slug && { slug }),
     };
+
+     // Handle slug validation and uniqueness
+     if (slug) {
+      if (!slug.match(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)) {
+        return res.status(400).json({
+          status: "error",
+          message: "Provided slug is invalid. Use lowercase alphanumeric with dashes.",
+        });
+      }
+      const existingSlug = await Product.findOne({ slug });
+      if (existingSlug && existingSlug._id.toString() !== productId) {
+        return res.status(400).json({
+          status: "error",
+          message: "Slug is already in use. Please choose another.",
+        });
+      }
+      productUpdates.slug = slug;
+    } else if (productName) {
+      // Auto-generate slug from productName if slug is not provided
+      productUpdates.slug = slugify(productName, { lower: true, strict: true });
+    }
+
 
     if (discount) {
       productUpdates.discount = {
         isActive: Boolean(discount.isActive),
         percentage: Number(discount.percentage) || 0,
         startDate: discount.startDate ? new Date(discount.startDate) : null,
-        endDate: discount.endDate ? new Date(discount.endDate) : null
+        endDate: discount.endDate ? new Date(discount.endDate) : null,
       };
     }
     
@@ -421,99 +506,6 @@ export const getProductsByCategory = async (req, res) => {
 };
 
 
-export const getSortedProducts = async (req, res) => {
-  try {
-    const { sort, category } = req.query;
 
-    // Check if category is provided
-    if (!category) {
-      return res.status(400).json({
-        status: "error",
-        message: "Category is required for sorting.",
-      });
-    }
-
-    if (!sort || (sort !== "low-to-high" && sort !== "high-to-low")) {
-      return res.status(400).json({
-        status: "error",
-        message: "Invalid sort parameter. Use 'low-to-high' or 'high-to-low'.",
-      });
-    }
-
-    const sortOrder = sort === "low-to-high" ? 1 : -1;
-
-    const filter = { category }; // Ensure category is always included in the filter
-
-    const products = await Product.find(filter)
-    .populate("parentCategory", "cName cDescription")
-    .populate("subCategory", "cName cDescription")
-    .populate("childCategory", "cName cDescription")
-      .sort({ productPrice: sortOrder });
-
-    if (!products.length) {
-      return res.status(404).json({
-        status: "error",
-        message: "No products found in the specified category.",
-      });
-    }
-
-    return res.status(200).json({
-      status: "success",
-      message: `Products sorted by price ${sort.replace("-", " ")}`,
-      products,
-    });
-  } catch (error) {
-    console.error("Error sorting products:", error);
-    return res.status(500).json({
-      status: "error",
-      message: error.message || "Server Error",
-    });
-  }
-};
-
-
-
-export const getFilteredProducts = async (req, res) => {
-  try {
-    const { minPrice, maxPrice, category } = req.query;
-
-    // Check if category is provided
-    if (!category) {
-      return res.status(400).json({
-        status: "error",
-        message: "Category is required for filtering.",
-      });
-    }
-
-    const filter = { category }; // Ensure category is always included in the filter
-    if (minPrice) filter.productPrice = { $gte: Number(minPrice) };
-    if (maxPrice) filter.productPrice = { ...filter.productPrice, $lte: Number(maxPrice) };
-
-    const products = await Product.find(filter)
-    .populate("parentCategory", "cName cDescription")
-    .populate("subCategory", "cName cDescription")
-    .populate("childCategory", "cName cDescription")
-      .sort({ productPrice: 1 }); // Optional: default sorting by price
-
-    if (!products.length) {
-      return res.status(404).json({
-        status: "error",
-        message: "No products found in the specified category and price range.",
-      });
-    }
-
-    return res.status(200).json({
-      status: "success",
-      message: "Products filtered successfully.",
-      products,
-    });
-  } catch (error) {
-    console.error("Error filtering products:", error);
-    return res.status(500).json({
-      status: "error",
-      message: error.message || "Server Error",
-    });
-  }
-};
 
 
