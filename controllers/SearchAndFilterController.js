@@ -1,5 +1,6 @@
 import Brand from "../models/Brand.js";
 import Product from "../models/Product.js";
+import { trackProductSearch } from "./MostSearchedController.js";
 
 export const searchProducts = async (req, res) => {
   try {
@@ -24,9 +25,13 @@ export const searchProducts = async (req, res) => {
     const products = await Product.find(searchFilter)
       .populate('brand', 'name')
       .populate("parentCategory", "cName cDescription")
-    .populate("subCategory", "cName cDescription")
-    .populate("childCategory", "cName cDescription")
-      
+      .populate("subCategory", "cName cDescription")
+      .populate("childCategory", "cName cDescription");
+
+    // Track searches for found products
+    for (const product of products) {
+      await trackProductSearch(product._id, query);
+    }
 
     return res.status(200).json({
       status: 'success',
@@ -128,7 +133,6 @@ export const getSortedProducts = async (req, res) => {
     });
   }
 };
-
 
 
 export const filteredPriceProducts = async (req, res) => {
