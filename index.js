@@ -11,6 +11,8 @@ import searchRoutes from "./routes/SearchRoutes.js";
 import UserRoute from "./routes/UserRoutes.js";
 import orderRoutes from "./routes/orderRoutes.js";
 import brandRoute from "./routes/BrandRoutes.js";
+//importing for bestseller---
+import bestSellingRoutes from "./routes/bestSellingRoutes.js"
 
 const app = express();
 connectDB();
@@ -41,6 +43,7 @@ app.use(`${apiRoute}/v1`, [
   searchRoutes,
   orderRoutes,
   brandRoute,
+  bestSellingRoutes,
 ]);
 app.use(`${apiRoute}/v1/user`, UserRoute);
 const PORT = 8000;
