@@ -35,6 +35,42 @@ const productSchema = mongoose.Schema(
       type: String,
       required: [true, "Product detail is required"],
     },
+    slug: {
+      type: String,
+      required: true,
+      unique: true,
+      trim: true,
+      lowercase: true,
+    },
+    weight: {
+      type: Number, // Weight in grams, kilograms, etc.
+      required: true,
+    },
+    status: {
+      type: String,
+      enum: ["active", "inactive", "archived"], // Use enums for predefined statuses
+      default: "active",
+    },
+    seoDescription: {
+      type: String,
+      maxLength: 160, // Typical SEO description length
+    },
+    seoTitle: {
+      type: String,
+      maxLength: 60, // Typical SEO title length
+    },
+    highlights: {
+      type: [String], // Array of key highlights
+      default: [],
+    },
+    color: {
+      type: [String], // Array of colors (e.g., ["red", "blue"])
+      default: [],
+    },
+    specifications: {
+      type: Map, // Use a Map to store key-value pairs for specifications
+      of: String,
+    },
     productPrice: {
       type: Number,
       required: [true, "Product price is required"],
