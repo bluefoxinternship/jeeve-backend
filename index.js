@@ -7,7 +7,7 @@ import PaymentRoute from "./routes/PaymentRoutes.js";
 import cors from "cors";
 import AuthRoute from "./routes/AuthRoutes.js";
 import Cartroute from "./routes/CartRoute.js";
-import searchRoutes from "./routes/SearchRoutes.js";
+import SearchAndFilterRoute from "./routes/SearchAndFilterRoute.js";
 import UserRoute from "./routes/UserRoutes.js";
 import orderRoutes from "./routes/orderRoutes.js";
 import brandRoute from "./routes/BrandRoutes.js";
@@ -38,7 +38,7 @@ app.use(`${apiRoute}/v1`, [
   categoryRouter,
   Cartroute,
   PaymentRoute,
-  searchRoutes,
+  SearchAndFilterRoute,
   orderRoutes,
   brandRoute,
 ]);

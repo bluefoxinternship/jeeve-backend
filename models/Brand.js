@@ -15,7 +15,11 @@ const brandSchema = new mongoose.Schema(
     image: {
       type: String, // URL for the image uploaded to Cloudinary
       required: true
-    }
+    },
+    isBrandOfTheWeek: {
+      type: Boolean,
+      default: false, // Only one brand should have this set to true
+    },
   },
   { timestamps: true }
 );
